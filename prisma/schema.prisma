@@ -13,173 +13,294 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum ROLE {
-  TEACHER
-  STUDENT
-  SCHOOLADMIN
-  SUPERADMIN
+enum Role {
+  USER
+  ADMIN
 }
 
-enum Gender {
-  MALE
-  FEMALE
+model Store {
+  id      String @id @default(cuid())
+  ownerId String
+
+  name        String
+  description String
+  address     String
+  color       String?
+  logoUrl     String?
+
+  website       String?
+  email         String?
+  contactNumber String?
+
+  salesGoalValue  Float? @default(0)
+  ordersGoalValue Int?   @default(0)
+
+  categories Category[]
+  products   Product[]
+  variants   ProductVariant[]
+
+  orders        Order[]
+  employees     Employee[]
+  discountCodes Discount[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
 }
 
-model User {
-  id            String          @id @default(cuid())
+model Category {
+  id   String @id @default(cuid())
+  name String
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@unique([storeId, name])
+  @@index([storeId])
+}
+
+model Product {
+  id String @id @default(cuid())
+
+  ownerId String
+  storeId String
+
+  name        String
+  description String?
+  imageUrl    String?
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attributes Attribute[]
+  variants   ProductVariant[]
+
+  @@unique([storeId, name])
+  @@index([ownerId])
+  @@index([storeId])
+  @@index([categoryId])
+}
+
+model Attribute {
+  id        String @id @default(cuid())
+  name      String
+  productId String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  values AttributeValue[]
+
+  order Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, name])
+  @@index([productId])
+}
+
+model AttributeValue {
+  id    String @id @default(cuid())
+  value String
+  order Int
+
+  attributeId String
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  productAttributeValues ProductAttributeValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([attributeId, value])
+  @@index([attributeId])
+}
+
+model ProductVariant {
+  id String @id @default(cuid())
+
+  sku               String
+  price             Float
+  costPrice         Float
+  imageUrl          String?
+  stock             Int
+  lowStockThreshold Int?    @default(0)
+
+  order Int
+
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId String
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  productAttributeValues ProductAttributeValue[]
+  relatedOrderLineItems  OrderLineItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, sku])
+  @@index([productId])
+  @@index([storeId])
+}
+
+model ProductAttributeValue {
+  id               String         @id @default(cuid())
+  productVariantId String
+  attributeValueId String
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+  attributeValue   AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order Int
+
+  @@index([productVariantId])
+  @@index([attributeValueId])
+}
+
+enum EmployeeStatus {
+  INVITED
+  ACTIVE
+  INACIVE
+}
+
+// employee
+model Employee {
+  id String @id @default(cuid())
+
+  employerId String // id of owner
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  avatarUrl     String?
+  email         String
+  username      String
   name          String
-  email         String          @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  // Optional for WebAuthn support
-  Authenticator Authenticator[]
-
-  hashedPassword String?
-  role           ROLE
+  contactNumber String?
+  pin           String // should be hashed
+  status        EmployeeStatus @default(INVITED)
+  handledOrders Order[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  school   School? @relation(fields: [schoolId], references: [id])
-  schoolId String?
-
-  studentProfile Student? // student profile associated with this user
-  teacherProfile Teacher? // teacher profile associated with this user
+  @@unique([storeId, email])
+  @@unique([storeId, username])
+  @@index([employerId])
+  @@index([storeId])
+  @@index([status])
 }
 
-model Account {
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
+// orders
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([provider, providerAccountId])
+enum PaymentStatus {
+  PAID
+  PENDING
+  REFUNDED
+  PARTIALLY_REFUNDED
 }
 
-model Session {
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum OrderStatus {
+  PREPARING
+  READY_FOR_PICKUP
+  FULFILLED
+  UNFULFILLED
+  CANCELLED
 }
 
-model VerificationToken {
-  identifier String   @id @default(cuid())
-  email      String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([email, token])
-}
-
-model ResetPasswordToken {
-  identifier String   @id @default(cuid())
-  email      String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([email, token])
-}
-
-// Optional for WebAuthn support
-model Authenticator {
-  credentialID         String  @unique
-  userId               String
-  providerAccountId    String
-  credentialPublicKey  String
-  counter              Int
-  credentialDeviceType String
-  credentialBackedUp   Boolean
-  transports           String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([userId, credentialID])
-}
-
-// school
-model School {
-  id       String @id @default(cuid())
-  schoolId String @unique
-  name     String
-  address  String
-  town     String
-  province String
-  region   String
-  zipCode  String
-
-  fullAddress String
-
-  phone     String
-  email     String
-  website   String?
-  logo      String?
-  slogan    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  schoolAdmins User[]
-  students     Student[]
-  teachers     Teacher[]
-}
-
-model Student {
+model Order {
   id String @id @default(cuid())
 
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
-  studentId String @unique
-  name      String
-  email     String
-  phone     String
-  address   String
-  gender    Gender
+  orderId     String      @unique
+  orderDate   DateTime
+  orderStatus OrderStatus @default(PREPARING)
 
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  schoolId String
+  customerName  String?       @default("Unknown")
+  paymentMethod String
+  paymentStatus PaymentStatus @default(PENDING)
+
+  regularAmount Float
+  totalAmount   Float
+
+  shippingFee   Float? @default(0)
+  serviceCharge Float? @default(0) // percentage
+
+  discountId String?
+  discount   Discount? @relation(fields: [discountId], references: [id])
+
+  lineItems OrderLineItem[]
+
+  createdById String
+  createdBy   Employee @relation(fields: [createdById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([schoolId])
+  @@index([storeId])
+  @@index([orderStatus])
+  @@index([paymentStatus])
 }
 
-model Teacher {
+model OrderLineItem {
+  id  String @id @default(cuid())
+  qty Int
+
+  productVariantId String
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+
+  // needed for snapshots, for products may change after this order
+  productName String
+  unitPrice   Float
+  sku         String
+  attributes  LineItemAttribute[]
+
+  relatedOrders Order[]
+}
+
+model LineItemAttribute {
+  id    String @id @default(cuid())
+  key   String
+  value String
+
+  orderLineItem   OrderLineItem @relation(fields: [orderLineItemId], references: [id], onDelete: Cascade)
+  orderLineItemId String
+}
+
+model Discount {
   id String @id @default(cuid())
 
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
-  teacherId String @unique
-  name      String
-  email     String
-  phone     String
-  address   String
-  gender    Gender
+  discountCode   String
+  discountAmount Float
 
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  schoolId String
+  isValid Boolean @default(true)
+
+  relatedOrders Order[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([schoolId])
+  @@unique([storeId, discountCode])
+  @@index([isValid])
 }

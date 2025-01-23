@@ -1,12 +1,12 @@
-import { auth } from "@/auth"
-import { ROLE } from "@prisma/client"
+import { auth } from "@clerk/nextjs/server"
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
-import { AuthError } from "next-auth"
 import {
   createSafeActionClient,
   DEFAULT_SERVER_ERROR_MESSAGE,
 } from "next-safe-action"
 import * as z from "zod"
+
+import { verifyEmployeeToken } from "./server"
 
 class ActionError extends Error {}
 
@@ -15,16 +15,42 @@ export const actionClient = createSafeActionClient({
     console.error("Action error:", e.message)
 
     if (e instanceof PrismaClientKnownRequestError) {
-    }
-
-    if (e instanceof AuthError) {
-      switch (e.type) {
-        case "CredentialsSignin":
-          return "Invalid credentials"
-        case "AccessDenied":
-          return "Invalid credentials"
-        default:
-          return "Something went wrong"
+      if (e.code === "P2002") {
+        if (
+          e.message.includes(
+            "Unique constraint failed on the fields: (`ownerId`,`name`)"
+          )
+        ) {
+          return "The store name you provided already exists."
+        }
+        if (
+          e.message.includes(
+            "Unique constraint failed on the fields: (`storeId`,`name`)"
+          )
+        ) {
+          return "Cannot have products with the same name."
+        }
+        if (
+          e.message.includes(
+            "Unique constraint failed on the fields: (`storeId`,`sku`)"
+          )
+        ) {
+          return "Cannot have duplicate SKUs for the same store."
+        }
+        if (
+          e.message.includes(
+            "Unique constraint failed on the fields: (`storeId`,`email`)"
+          )
+        ) {
+          return "The email you provided is already in use."
+        }
+        if (
+          e.message.includes(
+            "Unique constraint failed on the fields: (`storeId`,`username`)"
+          )
+        ) {
+          return "The username you provided is no longer available."
+        }
       }
     }
 
@@ -49,15 +75,13 @@ export const actionClient = createSafeActionClient({
 export const authActionClient = actionClient.use(async ({ next }) => {
   const user = await auth()
 
-  if (!user?.user?.id) throw new Error("Session not found.")
+  if (!user?.userId) throw new Error("Session not found.")
 
-  return next({ ctx: { user: user.user } })
+  return next({ ctx: { user } })
 })
 
-export const adminActionClient = authActionClient.use(
-  async ({ next, ctx: { user } }) => {
-    if (user.role !== ROLE.SCHOOLADMIN) throw new Error("Unauthorized.")
+export const requireEmployeeClient = actionClient.use(async ({ next }) => {
+  const employee = await verifyEmployeeToken()
 
-    return next()
-  }
-)
+  return next({ ctx: { employee } })
+})

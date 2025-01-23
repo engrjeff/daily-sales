@@ -1,25 +1,25 @@
-import * as React from "react"
-import { LoaderIcon } from "lucide-react"
+import { LoaderIcon } from 'lucide-react';
+import * as React from 'react';
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 
-import { Button } from "./button"
+import { Button } from './button';
 
 interface SubmitButtonProps extends React.ComponentProps<typeof Button> {
-  loading?: boolean
+  loading?: boolean;
 }
 
 export function SubmitButton({
   children,
   className,
   loading,
-  type = "submit",
+  type = 'submit',
   ...props
 }: SubmitButtonProps) {
   return (
     <Button
       disabled={loading || props.disabled}
-      className={cn("relative", className)}
+      className={cn('relative', className)}
       type={type}
       {...props}
     >
@@ -30,12 +30,12 @@ export function SubmitButton({
       ) : null}
       <span
         className={cn(
-          "inline-flex shrink-0 items-center gap-2 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-          loading ? "invisible" : ""
+          'inline-flex shrink-0 items-center gap-2 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+          loading ? 'invisible' : ''
         )}
       >
         {children}
       </span>
     </Button>
-  )
+  );
 }

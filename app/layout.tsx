@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
 import localFont from "next/font/local"
+import { ClerkProvider } from "@clerk/nextjs"
 import NextTopLoader from "nextjs-toploader"
 import { NuqsAdapter } from "nuqs/adapters/next/app"
 
 import { Toaster } from "@/components/ui/sonner"
-import AuthProvider from "@/components/providers/auth-provider"
 import { ReactQueryProvider } from "@/components/providers/react-query-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 
@@ -23,10 +23,10 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Student Management",
-    default: "Student Management", // a default is required when creating a template
+    template: "%s | Daily Sales",
+    default: "Daily Sales", // a default is required when creating a template
   },
-  description: "Student management system",
+  description: "Simple sales monitoring for your store.",
 }
 
 export default function RootLayout({
@@ -35,16 +35,16 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-background text-foreground h-full">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground h-full font-sans antialiased`}
-      >
-        <NextTopLoader color="#2563eb" />
-        <AuthProvider>
+    <ClerkProvider>
+      <html lang="en" className="bg-background text-foreground h-full">
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground h-full font-sans antialiased`}
+        >
+          <NextTopLoader color="#2563eb" />
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
-            enableSystem={true}
+            enableSystem
             disableTransitionOnChange
           >
             <NuqsAdapter>
@@ -54,8 +54,8 @@ export default function RootLayout({
               </ReactQueryProvider>
             </NuqsAdapter>
           </ThemeProvider>
-        </AuthProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }

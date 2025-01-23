@@ -1,53 +1,27 @@
-import { NextResponse } from "next/server"
-import authConfig from "@/auth.config"
-import {
-  API_AUTH_PREFIX,
-  AUTH_ROUTES,
-  DEFAULT_LOGIN_REDIRECT,
-  SCHOOL_SETUP_REDIRECT,
-} from "@/routes"
-import { ROLE } from "@prisma/client"
-import NextAuth from "next-auth"
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
 
-const { auth } = NextAuth(authConfig)
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/external(.*)",
+  // /^\/[a-zA-Z0-9]+\/pos$/,
+  "/:storeId/pos",
+  "/api/stores/:storeId/products",
+  "/invalid-store",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+])
 
-export default auth((req) => {
-  const isLoggedIn = !!req.auth
-
-  const { nextUrl } = req
-
-  if (nextUrl.pathname.startsWith("/verify")) return NextResponse.next()
-
-  const isApiAuthRoute = nextUrl.pathname.startsWith(API_AUTH_PREFIX)
-  const isAuthPageRoute = AUTH_ROUTES.includes(nextUrl.pathname)
-
-  if (isApiAuthRoute) return
-
-  if (isAuthPageRoute) {
-    if (isLoggedIn) {
-      return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl))
-    }
-
-    return
+export default clerkMiddleware(async (auth, request) => {
+  if (!isPublicRoute(request)) {
+    await auth.protect()
   }
-
-  if (isLoggedIn) {
-    if (
-      nextUrl.pathname !== SCHOOL_SETUP_REDIRECT &&
-      !req.auth?.user.hasSchoolSetUp &&
-      req.auth?.user.role === ROLE.SCHOOLADMIN
-    )
-      return NextResponse.redirect(new URL(SCHOOL_SETUP_REDIRECT, nextUrl))
-  }
-
-  if (!isLoggedIn) {
-    return NextResponse.redirect(new URL("/sign-in", nextUrl))
-  }
-
-  return
 })
 
 export const config = {
-  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
-  unstable_allowDynamic: ["**/node_modules/@react-email*/**/*.mjs*"],
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Always run for API routes
+    "/(api|trpc)(.*)",
+  ],
 }

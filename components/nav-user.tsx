@@ -1,103 +1,30 @@
-"use client"
+'use client';
 
-import { SignOutDialog } from "@/features/auth/SignOutDialog"
-import { BadgeCheck, ChevronsUpDown, Logs } from "lucide-react"
-import { useSession } from "next-auth/react"
-
-import { getInitials } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar"
-
-import { Skeleton } from "./ui/skeleton"
+import { SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
+import { SignedIn, UserButton, useUser } from '@clerk/nextjs';
+import { ChevronsUpDown } from 'lucide-react';
 
 export function NavUser() {
-  const { isMobile } = useSidebar()
-
-  const session = useSession()
-
-  if (session.status === "loading") {
-    return <Skeleton className="h-12 w-full" />
-  }
-
-  const user = session.data?.user
-
-  if (!user || session.status === "unauthenticated") return null
+  const { user } = useUser();
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="size-8 rounded-lg">
-                {user?.image ? (
-                  <AvatarImage src={user?.image} alt={user.name!} />
-                ) : null}
-                <AvatarFallback className="bg-primary rounded-lg">
-                  {getInitials(user.name!)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
-                <span className="truncate text-xs">{user.email}</span>
-              </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
-            align="end"
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="size-8 rounded-lg">
-                  {user.image ? (
-                    <AvatarImage src={user?.image} alt={user.name!} />
-                  ) : null}
-                  <AvatarFallback className="bg-primary rounded-lg ">
-                    {getInitials(user.name!)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
-                </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Logs />
-                Classes
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <SignOutDialog />
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <SignedIn>
+          <div className="flex items-center gap-4">
+            <UserButton />
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate text-sm font-semibold">
+                {user?.fullName}
+              </span>
+              <span className="text-muted-foreground truncate text-xs">
+                {user?.emailAddresses[0].emailAddress}
+              </span>
+            </div>
+            <ChevronsUpDown className="ml-auto size-4" />
+          </div>
+        </SignedIn>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }
